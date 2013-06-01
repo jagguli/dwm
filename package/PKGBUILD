@@ -18,13 +18,12 @@ install=dwm.install
 provides=('dwm')
 conflicts=('dwm')
 epoch=1
-source=( dwm.desktop
-    "git://github.com/jagguli/dwm.git")
+source=( dwm.desktop)
 
 prepare() {
-  if [[ -f $SRCDEST/config.h ]]; then
-    ln -sf $SRCDEST/config.h $srcdir/config.h
-  fi
+  ls ../../
+  rm -rf $srcdir/$_pkgname
+  git clone ../../  $srcdir/$_pkgname
 }
 
 build() {
