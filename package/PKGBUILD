@@ -24,6 +24,7 @@ prepare() {
   ls ../../
   rm -rf $srcdir/$_pkgname
   git clone ../../  $srcdir/$_pkgname
+  cp ../../config.h  $srcdir/$_pkgname
 }
 
 build() {
