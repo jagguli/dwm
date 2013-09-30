@@ -6,9 +6,7 @@
 #define HOME_BIN(cmd) "/home/steven/bin/"#cmd
 //#define URXVTC(title) "urxvtc", "-title", title, "-e"
 #define URXVTC(title) "st", "-t", title, "-e"
-#define SINGLEMON 0
 #define TERMCMD HOME_BIN(tmx_outer)
-#ifdef SINGLEMON
 #define TERM1 "term1"
 #define TERM2 "IPython"
 #else
@@ -162,8 +160,8 @@ static const MonocleNumberedIcon monoclenumberedicons[] = {
   { MODKEY|ShiftMask,             KEY,      tag,            {.ui = 1 << TAG} }, \
   { MODKEY|ControlMask|ShiftMask, KEY,      toggletorall,      {.ui = 1 << TAG} },
 
-#define MONTAGKEYS(MOD, KEY,TAG,MON)                                    \
-    { MOD,                            KEY,    viewtagmon,     {.v = &(int[2]){1<<TAG,MON}} },
+#define MONTAGKEYS(MOD, KEY,TAG,MON,ALTTAG)                                   \
+    { MOD,                            KEY,    viewtagmon,     {.v = &(int[2]){1<<TAG,MON,ALTTAG}} },
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
@@ -208,6 +206,9 @@ static const char *voldowncmd[]    = { HOME_BIN(samctl.py), "-v", "down", NULL }
 static const char *voltogglecmd[]  = { "amixer", "-q", "set", "Master", "toggle",  NULL };
 static const char *volupcmd[]      = { HOME_BIN(samctl.py), "-v", "up",  NULL };
 static const char *wificmd[]       = { URXVTC("Wifi"), "-e", "sudo", "wifi-menu", NULL };
+static const char *xkillcmd[]       = { "xkill", NULL };
+static const char *mpctoggle[]       = { "mpc", "toggle", NULL };
+static const char *mpcplay[]       = { "mpc", "play", NULL };
 static const int cmd1[2] = {8,1};
 static const int cmd2[2] = {8,0};
 
@@ -237,6 +238,8 @@ static Key keys[] = {
     { 0,                             XF86XK_AudioLowerVolume,  spawn,            {.v = voldowncmd } },
     { 0,                             XF86XK_AudioMute,         spawn,            {.v = voltogglecmd } },
     { 0,                             XF86XK_AudioRaiseVolume,  spawn,            {.v = volupcmd } },
+    { 0,                             XF86XK_AudioPause,  spawn,            {.v = mpctoggle } },
+    { 0,                             XF86XK_AudioPlay,  spawn,            {.v = mpctoggle } },
     { Mod4Mask,                      XK_w,                     spawn,            {.v = wificmd } },
     { MODKEY|ShiftMask,              XK_e,                     spawn,            {.v = krusader } },
     { 0,                             XF86XK_KbdBrightnessDown, spawn,            {.v = kbdlightdowncmd } },
@@ -263,6 +266,8 @@ static Key keys[] = {
     { MODKEY,                       XK_Return, zoom,           {0} },
     { MODKEY,                       XK_Tab,    view,           {0} },
     { MODKEY,                       XK_q,      killclient,     {0} },
+    { MODKEY|ShiftMask,                       XK_c,      killclient,     {0} },
+    //{ MODKEY|ShiftMask,             XK_c,      spawn,     {.v = xkillcmd }},
     { MODKEY,                       XK_t,      setlayout,      {.v = &layouts[TILE_LAYOUT]} },
     { MODKEY,                       XK_b,      setlayout,      {.v = &layouts[BSTACK_LAYOUT]} },
     { MODKEY,                       XK_f,      setlayout,      {.v = &layouts[NULL_LAYOUT]} },
@@ -289,23 +294,14 @@ static Key keys[] = {
     TAGKEYS(                        XK_7,                      6)
     TAGKEYS(                        XK_8,                      7)
     TAGKEYS(                        XK_9,                      8)
-#ifndef SINGLEMON
-    MONTAGKEYS(0,XK_F12,8,1)
-    MONTAGKEYS(0,XK_F11,8,0)
-#else
-    MONTAGKEYS(0,XK_F12,8,0)
-    MONTAGKEYS(0,XK_F11,7,0)
-#endif
-    MONTAGKEYS(0,XK_F10,2,0)
-    MONTAGKEYS(0,XK_F9,3,0)
-    MONTAGKEYS(0,XK_F1,0,0)
-    MONTAGKEYS(0,XK_F2,1,0)
-    MONTAGKEYS(0,XK_F6,4,0)
-#ifndef SINGLEMON
+    MONTAGKEYS(0,XK_F12,8,1,8)
+    MONTAGKEYS(0,XK_F11,7,0,8)
+    MONTAGKEYS(0,XK_F10,2,0,2)
+    MONTAGKEYS(0,XK_F9,3,0,3)
+    MONTAGKEYS(0,XK_F1,0,0,0)
+    MONTAGKEYS(0,XK_F2,1,0,1)
+    MONTAGKEYS(0,XK_F6,4,0,4)
     { 0,                            XK_F11,    spawnifnottitle,     {.v = terminal2cmd } },
-#else
-    { 0,                            XK_F11,    spawnifnottitle,     {.v = qpython } },
-#endif
     { 0,                            XK_F12,    spawnifnottitle,     {.v = terminal1cmd } },
     { Mod5Mask,                     XK_5,      focusmon,       {.i = 1 } },
     { MODKEY|ShiftMask,             XK_q,      quit,           {0} },
@@ -458,13 +454,18 @@ viewtagmon(const Arg *arg){
     Arg a;
     a.ui = (int)((int *)arg->v)[0];
 
-#ifndef SINGLEMON
-    Arg i = {.i = (int)((int *)arg->v)[1] };
-    if(selmon->num != i.i){
-        focusmon(&i);
-        return;
+    int nn;
+    XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
+    if(nn > 1){
+        //use ALTTAG if singlemonitor
+        a.ui = (int)((int *)arg->v)[2];
+        Arg i = {.i = (int)((int *)arg->v)[1] };
+        if(selmon->num != i.i){
+            focusmon(&i);
+            return;
+        }
+    }else{
     }
-#endif
 
     vieworprev(&a);
 }
