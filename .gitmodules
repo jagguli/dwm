@@ -1,0 +1,3 @@
+[submodule "dwmstatus"]
+	path = dwmstatus
+	url = git@github.com:jagguli/dwmstatus

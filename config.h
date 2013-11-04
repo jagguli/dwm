@@ -6,7 +6,7 @@
 #define HOME_BIN(cmd) "/home/steven/bin/"#cmd
 //#define URXVTC(title) "urxvtc", "-title", title, "-e"
 #define URXVTC(title) "st", "-t", title, "-e"
-#define SINGLEMON 0
+//#define SINGLEMON 0
 #define TERMCMD HOME_BIN(tmx_outer)
 #ifdef SINGLEMON
 #define TERM1 "term1"
