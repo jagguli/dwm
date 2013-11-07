@@ -7,8 +7,6 @@
 //#define URXVTC(title) "urxvtc", "-title", title, "-e"
 #define URXVTC(title) "st", "-t", title, "-e"
 #define TERMCMD HOME_BIN(tmx_outer)
-#define TERM1 "right"
-#define TERM2 "left"
 /* custom functions declarations */
 static void focusstackf(const Arg *arg);
 static void setltor1(const Arg *arg);
@@ -21,6 +19,7 @@ static void spawnifnottitle(const Arg *arg);
 static void viewtagmon(const Arg *arg);
 static void shadewin(const Arg *arg);
 void list_clients(const Arg *arg);
+void spawnterminal(const Arg *arg);
 
 /* appearance */
 static const char font[]                 = "-*-terminus-*-*-*-*-12-*-*-*-*-*-*-*";
@@ -114,13 +113,6 @@ static const Rule rules[] = {
     { NULL,                  NULL,     "WeeChat",             1 << 3,    False,                  1 },
     { NULL,                  NULL,     "Mutt",                1 << 2,    False,                  1 },
     { NULL,                  NULL,     "AWS",                 1 << 4,    False,                  1 },
-#ifdef SINGLEMON
-    { NULL,                  NULL,     TERM2,                1 << 7,    False,        True,      1 },
-    { NULL,                  NULL,     TERM1,                1 << 8,    False,        True,      0 },
-#else
-    { NULL,                  NULL,     TERM1,                1 << 8,    False,        True,      1 },
-    { NULL,                  NULL,     TERM2,                1 << 8,    False,        True,      0 },
-#endif
     { "VirtualBox",          NULL,     NULL,                 1 << 2,    False,        True,      1 },
     { NULL,                 NULL,     "syd-term2",           1 << 3,    False,        True,      1 },
     { "Gimp",                NULL,      NULL,                 1 << 5,    False,                  -1 },
@@ -157,12 +149,14 @@ static const MonocleNumberedIcon monoclenumberedicons[] = {
   { MODKEY|ControlMask|ShiftMask, KEY,      toggletorall,      {.ui = 1 << TAG} },
 
 #define MONTAGKEYS(MOD, KEY,TAG,MON,ALTTAG)                                   \
-    { MOD,                            KEY,    viewtagmon,     {.v = &(int[2]){1<<TAG,MON,ALTTAG}} },
+    { MOD,                            KEY,    viewtagmon,     {.v = &(int[3]){1<<TAG,MON,ALTTAG}} },
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
+static const int reverse_mon = 1;
+static const char *terminalcmd_title[]  = { "left", "right"};
 static const char *termcmd[]  = { URXVTC("Terminal"), NULL };
 static const char *lock[]  = { "xscreensaver-command", "-lock", NULL };
 /* commands */
@@ -177,8 +171,6 @@ static const char *irccmd[]        = { URXVTC("WeeChat"), HOME_BIN(tmx),"chat", 
 static const char *pidgincmd[]        = { "pidgin", NULL };
 static const char *mailcmd[]       = { URXVTC("Mutt"), HOME_BIN(tmx),"mail", NULL };
 static const char *remotecmd[]     = { URXVTC("AWS"), "autossh", "-M", "0", "stevenjoseph.in", "-t", HOME_BIN(tmx_outer aws),"aws", NULL };
-static const char *terminal1cmd[]  = { URXVTC(TERM1), TERMCMD, TERM1, NULL };
-static const char *terminal2cmd[]  = { URXVTC(TERM2), TERMCMD, TERM2, NULL };
 static const char *qpython[]     = { HOME_BIN(qpython), NULL, TERM2, NULL };
 static const char *logoutcmd[]     = { "sudo", "killall", "X", NULL };
 static const char *menucmd[]       = { "mygtkmenu", "/home/ok/.menu", NULL };
@@ -290,15 +282,13 @@ static Key keys[] = {
     TAGKEYS(                        XK_7,                      6)
     TAGKEYS(                        XK_8,                      7)
     TAGKEYS(                        XK_9,                      8)
-    MONTAGKEYS(0,XK_F12,8,1,8)
-    MONTAGKEYS(0,XK_F11,7,0,8)
     MONTAGKEYS(0,XK_F10,2,0,2)
     MONTAGKEYS(0,XK_F9,3,0,3)
     MONTAGKEYS(0,XK_F1,0,0,0)
     MONTAGKEYS(0,XK_F2,1,0,1)
     MONTAGKEYS(0,XK_F6,4,0,4)
-    { 0,                            XK_F11,    spawnifnottitle,     {.v = terminal2cmd } },
-    { 0,                            XK_F12,    spawnifnottitle,     {.v = terminal1cmd } },
+    { 0,                            XK_F12,    spawnterminal,     {.i = 0} },
+    { 0,                            XF86XK_Eject,    spawnterminal,     {.i = 1 } },
     { Mod5Mask,                     XK_5,      focusmon,       {.i = 1 } },
     { MODKEY|ShiftMask,             XK_q,      quit,           {0} },
     { MODKEY, XK_Left, cycle, {.i = -1} },
@@ -455,7 +445,9 @@ viewtagmon(const Arg *arg){
     if(nn > 1){
         //use ALTTAG if singlemonitor
         a.ui = (int)((int *)arg->v)[2];
-        Arg i = {.i = (int)((int *)arg->v)[1] };
+        int monindex = (int)((int *)arg->v)[1];
+        if (reverse_mon){monindex = (nn-1)-monindex;}
+        Arg i = {.i = monindex };
         if(selmon->num != i.i){
             focusmon(&i);
             return;
@@ -498,5 +490,20 @@ list_clients(const Arg *arg){
     }
     //fwrite("\n", sizeof(char), 1, file);
     pclose(file);
+}
+
+void spawnterminal(const Arg *arg){
+    int monindex = arg->i;
+    int realmonindex = monindex;
+    int nn;
+    XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
+    if (reverse_mon){monindex = (nn-1)-monindex;}
+    const char *cmd[] = {"st", "-t", terminalcmd_title[monindex], 
+                         "-e", TERMCMD, terminalcmd_title[monindex], NULL };
+    const Arg sargs = {.v = cmd};
+    //fprintf(stderr, "dwm: index title %d\n", monindex);
+    spawnifnottitle(&sargs);
+    const Arg vargs = {.v = &(int[3]){1<<8,realmonindex,1<<8}};
+    viewtagmon(&vargs);
 }
     
