@@ -20,6 +20,7 @@ static void viewtagmon(const Arg *arg);
 static void shadewin(const Arg *arg);
 void list_clients(const Arg *arg);
 void spawnterminal(const Arg *arg);
+KeySym term_key();
 
 /* appearance */
 static const char font[]                 = "-*-terminus-*-*-*-*-12-*-*-*-*-*-*-*";
@@ -103,6 +104,8 @@ static const Tag tags[] = {
 /* window rules */
 static const Rule rules[] = {
     // class                  instance  title                  tags mask  isfloating  iscentred   monitor
+    { NULL,                  NULL,     "left",     1 << 8,    False,       False,      1 },
+    { NULL,                  NULL,     "right",     1 << 8,    False,       False,      0 },
     { NULL,                  NULL,     "DavMail Gateway",     1 << 6,    False,       False,      1 },
     { NULL,                  NULL,     "tmux",                1 << 0,    False,                  -1 },
     { "Krusader",            NULL,      NULL,                 1 << 5,    False,       False,      1 },
@@ -171,7 +174,7 @@ static const char *irccmd[]        = { URXVTC("WeeChat"), HOME_BIN(tmx),"chat", 
 static const char *pidgincmd[]        = { "pidgin", NULL };
 static const char *mailcmd[]       = { URXVTC("Mutt"), HOME_BIN(tmx),"mail", NULL };
 static const char *remotecmd[]     = { URXVTC("AWS"), "autossh", "-M", "0", "stevenjoseph.in", "-t", HOME_BIN(tmx_outer aws),"aws", NULL };
-static const char *qpython[]     = { HOME_BIN(qpython), NULL, TERM2, NULL };
+//static const char *qpython[]     = { HOME_BIN(qpython), NULL, TERM2, NULL };
 static const char *logoutcmd[]     = { "sudo", "killall", "X", NULL };
 static const char *menucmd[]       = { "mygtkmenu", "/home/ok/.menu", NULL };
 static const char *monitorcmd[]    = { "/home/ok/bin/monitor-dwm.sh", NULL };
@@ -204,6 +207,8 @@ static const int cmd2[2] = {8,0};
 #include "movestack.c"
 
 static Key keys[] = {
+    { 0,                            XF86XK_Eject,    spawnterminal,     {.i = 1 } },
+    { 0,                            XK_F12,    spawnterminal,     {.i = 0} },
     { MODKEY|ShiftMask,		XK_s,	   spawn,	   SHCMD("transset-df -a --dec .05") },
     { MODKEY|ShiftMask,		XK_d,	   spawn,	   SHCMD("transset-df -a --inc .05") },
     { MODKEY|ShiftMask,		XK_f,	   spawn,	   SHCMD("transset-df -a 1") },
@@ -287,8 +292,6 @@ static Key keys[] = {
     MONTAGKEYS(0,XK_F1,0,0,0)
     MONTAGKEYS(0,XK_F2,1,0,1)
     MONTAGKEYS(0,XK_F6,4,0,4)
-    { 0,                            XK_F12,    spawnterminal,     {.i = 0} },
-    { 0,                            XF86XK_Eject,    spawnterminal,     {.i = 1 } },
     { Mod5Mask,                     XK_5,      focusmon,       {.i = 1 } },
     { MODKEY|ShiftMask,             XK_q,      quit,           {0} },
     { MODKEY, XK_Left, cycle, {.i = -1} },
@@ -496,14 +499,32 @@ void spawnterminal(const Arg *arg){
     int monindex = arg->i;
     int realmonindex = monindex;
     int nn;
+    int tagindex=8;
     XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
-    if (reverse_mon){monindex = (nn-1)-monindex;}
+    fprintf(stderr, "dwm: mons title %d\n", nn);
+    if (reverse_mon && nn > 1){
+        monindex = (nn-1)-monindex;
+    }
     const char *cmd[] = {"st", "-t", terminalcmd_title[monindex], 
                          "-e", TERMCMD, terminalcmd_title[monindex], NULL };
     const Arg sargs = {.v = cmd};
     //fprintf(stderr, "dwm: index title %d\n", monindex);
     spawnifnottitle(&sargs);
-    const Arg vargs = {.v = &(int[3]){1<<8,realmonindex,1<<8}};
+    if(nn==1 && monindex > 0){
+        tagindex = 8;
+    }else if(nn == 1){
+        tagindex = 7;
+    }
+    const Arg vargs = {.v = &(int[3]){1<<tagindex,realmonindex,1<<tagindex}};
     viewtagmon(&vargs);
 }
     
+KeySym term_key(){
+    int nn;
+    XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
+    if (reverse_mon && nn > 1){
+        return XF86XK_Eject;
+    }else{
+        return XK_F11;
+    }
+}
