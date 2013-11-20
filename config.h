@@ -499,7 +499,7 @@ void spawnterminal(const Arg *arg){
     int monindex = arg->i;
     int realmonindex = monindex;
     int nn;
-    int tagindex=8;
+    int tagindex=7;
     XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
     if (reverse_mon && nn > 1){
         monindex = (nn-1)-monindex;
