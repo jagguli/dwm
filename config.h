@@ -501,7 +501,6 @@ void spawnterminal(const Arg *arg){
     int nn;
     int tagindex=8;
     XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
-    fprintf(stderr, "dwm: mons title %d\n", nn);
     if (reverse_mon && nn > 1){
         monindex = (nn-1)-monindex;
     }
@@ -512,10 +511,8 @@ void spawnterminal(const Arg *arg){
     spawnifnottitle(&sargs);
     if(nn==1 && monindex > 0){
         tagindex = 8;
-    }else if(nn == 1){
-        tagindex = 7;
     }
-    const Arg vargs = {.v = &(int[3]){1<<tagindex,realmonindex,1<<tagindex}};
+    const Arg vargs = {.v = &(int[3]){1<<8,realmonindex,1<<tagindex}};
     viewtagmon(&vargs);
 }
     
